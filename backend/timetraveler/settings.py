@@ -33,6 +33,8 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     # app
     'accounts',
+    'courses',
+    'spots',
 
     # rest_framework
     'rest_framework',
