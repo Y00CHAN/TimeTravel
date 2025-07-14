@@ -11,4 +11,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-CMD ["gunicorn", "timtraveler.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+# CMD ["gunicorn", "timtraveler.wsgi:application", "--bind", "0.0.0.0:8000"] # 배포 시 이 코드로 테스트

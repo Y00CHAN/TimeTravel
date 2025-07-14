@@ -16,8 +16,9 @@ from .serializers import UserSerializer, UserProfileUpdateSerializer
 # 환경변수 로드
 load_dotenv()
 
+# OAuth
 # 구글 로그인 요청 보내기
-@ api_view(['GET', 'POST'])
+@api_view(['GET', 'POST'])
 def google_login(request):
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     redirect_uri = "http://127.0.0.1:8000/accounts/google/callback/"
@@ -38,7 +39,7 @@ def google_login(request):
     return redirect(google_auth_url)
 
 
-
+# 토큰 생성 함수
 def generate_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -47,6 +48,7 @@ def generate_tokens_for_user(user):
     }
 
 # 구글 응답 처리하기
+@api_view(['GET', 'POST'])
 def google_callback(request):
     User = get_user_model()
     
@@ -178,6 +180,8 @@ def logout(request):
     except Exception:
         return Response(status=400)
 
+
+# 프로필 조회 및 수정
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def profile(request, user_id):
@@ -201,6 +205,16 @@ def profile(request, user_id):
     except Exception as e:
         return Response({'error': str(e)}, status=500)
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_profile(request, user_id):
+    try:
+        user = get_object_or_404(get_user_model(), pk=user_id)
+        user.delete()
+        return Response(status=204)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
 
 # refresh 토큰 전달하기
 class CookieTokenRefreshView(TokenRefreshView):
@@ -208,4 +222,4 @@ class CookieTokenRefreshView(TokenRefreshView):
         print('쿠키:', request.COOKIES)  # ✅ 확인용
         request.data['refresh'] = request.COOKIES.get('refresh_token')
         return super().post(request, *args, **kwargs)
-    
+
