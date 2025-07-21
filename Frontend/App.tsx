@@ -1,13 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import HomeScreen from './src/screens/HomeScreen';
-import MapScreen from './src/screens/MapScreen';
-import TripsScreen from './src/screens/TripsScreen';
-import GalleryScreen from './src/screens/GalleryScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
+import { PixelText as Text } from './src/components/PixelText';
+import HomeScreen from './src/screens/Main/HomeScreen';
+import MapScreen from './src/screens/Main/MapScreen';
+import TripsScreen from './src/screens/Main/TripsScreen';
+import GalleryScreen from './src/screens/Main/GalleryScreen';
+import ProfileScreen from './src/screens/Profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,12 +19,7 @@ export default function App() {
         initialRouteName="Trips"
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarShowLabel: true,
-          tabBarLabelStyle: {
-            fontWeight: route.name === 'Trips' ? 'bold' : 'normal',
-            fontSize: 14,
-            marginBottom: 4,
-          },
+          tabBarShowLabel: false, // 직접 label 렌더링
           tabBarStyle: {
             height: 80,
             borderTopLeftRadius: 28,
@@ -54,11 +50,61 @@ export default function App() {
           tabBarInactiveTintColor: '#bbb',
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Map" component={MapScreen} />
-        <Tab.Screen name="Trips" component={TripsScreen} />
-        <Tab.Screen name="Gallary" component={GalleryScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen 
+          name="Home" 
+          component={HomeScreen} 
+          options={{
+            tabBarLabel: ({ color, focused }) => (
+              <Text style={{ color, fontSize: 14, marginBottom: 4 }}>
+                Home
+              </Text>
+            ),
+          }}
+        />
+        <Tab.Screen 
+          name="Map" 
+          component={MapScreen} 
+          options={{
+            tabBarLabel: ({ color, focused }) => (
+              <Text style={{ color, fontSize: 14, marginBottom: 4 }}>
+                Map
+              </Text>
+            ),
+          }}
+        />
+        <Tab.Screen 
+          name="Trips" 
+          component={TripsScreen} 
+          options={{
+            tabBarLabel: ({ color, focused }) => (
+              <Text style={{ color, fontSize: 14, marginBottom: 4 }}>
+                Trips
+              </Text>
+            ),
+          }}
+        />
+        <Tab.Screen 
+          name="Gallary" 
+          component={GalleryScreen} 
+          options={{
+            tabBarLabel: ({ color, focused }) => (
+              <Text style={{ color, fontSize: 14, marginBottom: 4 }}>
+                Gallery
+              </Text>
+            ),
+          }}
+        />
+        <Tab.Screen 
+          name="Profile" 
+          component={ProfileScreen} 
+          options={{
+            tabBarLabel: ({ color, focused }) => (
+              <Text style={{ color, fontSize: 14, marginBottom: 4 }}>
+                Profile
+              </Text>
+            ),
+          }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );

@@ -1,12 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { PixelText as Text } from '../../components/PixelText';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-export default function HomeScreen() {
+export default function GalleryScreen() {
   return (
     <View style={styles.container}>
-      <Ionicons name="home-outline" size={48} color="#bbb" />
-      <Text style={styles.text}>Home</Text>
+      <Ionicons name="image-outline" size={48} color="#bbb" />
+      <Text style={styles.text}>Gallary</Text>
     </View>
   );
 }

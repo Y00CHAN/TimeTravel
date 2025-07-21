@@ -1,13 +1,58 @@
-import React from 'react';
-import { View, Button, Alert, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Button, Alert, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { getSocialLoginUrl } from '../../services/authService';
+import SocialLoginWebView from './SocialLoginWebView';
 
 const LoginScreen = ({ navigation }: any) => {
+  const [showWebView, setShowWebView] = useState(false);
+  const [currentProvider, setCurrentProvider] = useState<'google' | 'kakao' | null>(null);
+  const [loginUrl, setLoginUrl] = useState('');
+
+  const handleSocialLogin = (provider: 'google' | 'kakao') => {
+    try {
+      const url = getSocialLoginUrl(provider);
+      setCurrentProvider(provider);
+      setLoginUrl(url);
+      setShowWebView(true);
+    } catch (error) {
+      Alert.alert('오류', '로그인 URL을 가져오는 중 오류가 발생했습니다.');
+    }
+  };
+
   const handleGoogleLogin = () => {
-    Alert.alert('구글 로그인', '구글 로그인 기능이 준비 중입니다.');
+    handleSocialLogin('google');
   };
 
   const handleKakaoLogin = () => {
-    Alert.alert('카카오 로그인', '카카오 로그인 기능이 준비 중입니다.');
+    handleSocialLogin('kakao');
+  };
+
+  const handleLoginSuccess = (userData: any) => {
+    setShowWebView(false);
+    Alert.alert(
+      '로그인 성공',
+      `${currentProvider === 'google' ? '구글' : '카카오'} 로그인이 완료되었습니다!`,
+      [
+        {
+          text: '확인',
+          onPress: () => {
+            // 메인 화면으로 이동
+            navigation.navigate('Home');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleLoginError = (error: string) => {
+    setShowWebView(false);
+    Alert.alert('로그인 실패', error);
+  };
+
+  const handleCloseWebView = () => {
+    setShowWebView(false);
+    setCurrentProvider(null);
+    setLoginUrl('');
   };
 
   const handleSignupPress = () => {
@@ -46,8 +91,25 @@ const LoginScreen = ({ navigation }: any) => {
       </View>
 
       <Text style={styles.note}>
-        * 소셜 로그인 기능은 현재 개발 중입니다.
+        * 소셜 로그인으로 간편하게 시작하세요
       </Text>
+
+      {/* 소셜 로그인 WebView 모달 */}
+      <Modal
+        visible={showWebView}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        {currentProvider && loginUrl && (
+          <SocialLoginWebView
+            provider={currentProvider}
+            loginUrl={loginUrl}
+            onLoginSuccess={handleLoginSuccess}
+            onLoginError={handleLoginError}
+            onClose={handleCloseWebView}
+          />
+        )}
+      </Modal>
     </View>
   );
 };
