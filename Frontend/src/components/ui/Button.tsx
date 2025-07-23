@@ -1,112 +1,122 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, TouchableOpacityProps, StyleSheet } from 'react-native';
 import { PixelText } from '../PixelText';
 
-interface ButtonProps {
+interface ButtonProps extends TouchableOpacityProps {
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
   children: React.ReactNode;
-  onPress?: () => void;
-  variant?: 'default' | 'outline' | 'destructive';
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
-  disabled?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({
-  children,
-  onPress,
-  variant = 'default',
-  size = 'md',
-  style,
-  textStyle,
-  disabled = false,
-}) => {
-  const buttonStyle = [
-    styles.base,
-    styles[variant],
-    styles[size],
-    disabled && styles.disabled,
-    style,
-  ];
-
-  const textStyles = [
-    styles.text,
-    styles[`${variant}Text`],
-    styles[`${size}Text`],
-    disabled && styles.disabledText,
-    textStyle,
-  ];
-
-  return (
-    <TouchableOpacity
-      style={buttonStyle}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.8}
-    >
-      <PixelText style={textStyles}>{children}</PixelText>
-    </TouchableOpacity>
-  );
-};
-
-const styles = StyleSheet.create({
+const buttonStyles = StyleSheet.create({
   base: {
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#000',
+    borderRadius: 6,
+    borderWidth: 1,
   },
   default: {
-    backgroundColor: '#fff',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderColor: '#000',
+    backgroundColor: '#000000',
+    borderColor: '#000000',
   },
   destructive: {
     backgroundColor: '#ef4444',
-    borderColor: '#000',
+    borderColor: '#ef4444',
   },
-  sm: {
-    paddingHorizontal: 12,
+  outline: {
+    backgroundColor: 'transparent',
+    borderColor: '#000000',
+  },
+  secondary: {
+    backgroundColor: '#f3f4f6',
+    borderColor: '#f3f4f6',
+  },
+  ghost: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+  },
+  link: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+  },
+  sizeDefault: {
+    paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  md: {
-    paddingHorizontal: 16,
+  sizeSm: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  sizeLg: {
+    paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  lg: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+  sizeIcon: {
+    width: 40,
+    height: 40,
   },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  defaultText: {
-    color: '#000',
-  },
-  outlineText: {
-    color: '#000',
-  },
-  destructiveText: {
-    color: '#fff',
-  },
-  smText: {
-    fontSize: 12,
-  },
-  mdText: {
-    fontSize: 14,
-  },
-  lgText: {
+});
+
+const textStyles = StyleSheet.create({
+  base: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 16,
   },
-  disabledText: {
-    color: '#666',
+  default: {
+    color: '#ffffff',
   },
-}); 
+  destructive: {
+    color: '#ffffff',
+  },
+  outline: {
+    color: '#000000',
+  },
+  secondary: {
+    color: '#000000',
+  },
+  ghost: {
+    color: '#000000',
+  },
+  link: {
+    color: '#000000',
+    textDecorationLine: 'underline',
+  },
+  sizeSm: {
+    fontSize: 14,
+  },
+  sizeLg: {
+    fontSize: 18,
+  },
+});
+
+export const Button: React.FC<ButtonProps> = ({ 
+  variant = 'default', 
+  size = 'default', 
+  style, 
+  children, 
+  ...props 
+}) => {
+  const buttonStyle = [
+    buttonStyles.base,
+    buttonStyles[variant],
+    size === 'sm' && buttonStyles.sizeSm,
+    size === 'lg' && buttonStyles.sizeLg,
+    size === 'icon' && buttonStyles.sizeIcon,
+    size === 'default' && buttonStyles.sizeDefault,
+    style,
+  ];
+
+  const textStyle = [
+    textStyles.base,
+    textStyles[variant],
+    size === 'sm' && textStyles.sizeSm,
+    size === 'lg' && textStyles.sizeLg,
+  ];
+
+  return (
+    <TouchableOpacity style={buttonStyle} {...props}>
+      <PixelText style={textStyle}>{children}</PixelText>
+    </TouchableOpacity>
+  );
+}; 

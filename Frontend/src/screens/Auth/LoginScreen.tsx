@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Button, Alert, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { Text, View, Button, Alert, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { getSocialLoginUrl } from '../../services/authService';
 import SocialLoginWebView from './SocialLoginWebView';
+import { INCHEON_BLUE_LIGHT, INCHEON_GRAY } from '../../styles/fonts';
 
 const LoginScreen = ({ navigation }: any) => {
   const [showWebView, setShowWebView] = useState(false);
@@ -61,7 +62,7 @@ const LoginScreen = ({ navigation }: any) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: INCHEON_BLUE_LIGHT }]}>
       <View style={styles.header}>
         <Text style={styles.title}>TimeTravel</Text>
         <Text style={styles.subtitle}>소셜 로그인으로 시작하세요</Text>
@@ -120,21 +121,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: INCHEON_BLUE_LIGHT,
   },
   header: {
     alignItems: 'center',
     marginBottom: 50,
   },
   title: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 32,
-    fontWeight: 'bold',
     marginBottom: 10,
-    color: '#333',
+    color: INCHEON_GRAY,
   },
   subtitle: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 16,
-    color: '#666',
+    color: INCHEON_GRAY,
     textAlign: 'center',
   },
   buttonContainer: {
@@ -160,9 +162,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   googleButtonText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     color: '#333',
     fontSize: 16,
-    fontWeight: '600',
   },
   kakaoButton: {
     backgroundColor: '#FEE500',
@@ -180,9 +182,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   kakaoButtonText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     color: '#000000',
     fontSize: 16,
-    fontWeight: '600',
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -197,9 +199,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ddd',
   },
   dividerText: {
-    marginHorizontal: 15,
-    color: '#999',
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 14,
+    color: INCHEON_GRAY,
+    marginHorizontal: 8,
   },
   signupPrompt: {
     flexDirection: 'row',
@@ -208,18 +211,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   signupPromptText: {
-    color: '#666',
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 14,
+    color: INCHEON_GRAY,
   },
   signupLink: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     color: '#007AFF',
     fontSize: 14,
-    fontWeight: '600',
     marginLeft: 5,
   },
   note: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 12,
-    color: '#999',
+    color: INCHEON_GRAY,
+    marginTop: 16,
     textAlign: 'center',
   },
 });

@@ -1,477 +1,380 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  ImageBackground,
-  Dimensions,
-  Alert,
+import {
+  View,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
   Image,
-  Text
+  Dimensions,
+  Text,
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import { PixelText as PixelTextComponent } from '../../components/PixelText';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { INCHEON_BLUE, INCHEON_BLUE_LIGHT, INCHEON_GRAY } from '../../styles/fonts';
+import PixelLockIcon from '../../components/ui/PixelLockIcon';
+import { useNavigation } from '@react-navigation/native';
+// 드롭다운 import 제거
+// import RNPickerSelect from 'react-native-picker-select';
 
 const { width } = Dimensions.get('window');
 
-interface Trip {
-  id: number;
-  title: string;
-  status: 'current' | 'completed' | 'planned';
-  locations: Array<{
-    id: number;
-    name: string;
-    lat: number;
-    lng: number;
-    visited: boolean;
-    locked?: boolean;
-  }>;
-  progress: number;
-}
+const TABS = [
+  { key: 'progress', label: '진행중' },
+  { key: 'completed', label: '진행완료' },
+  { key: 'saved', label: '찜해놓은' },
+];
 
-export default function TripsScreen() {
-  const [activeTab, setActiveTab] = useState<'진행중' | '진행완료' | '찜해놓은'>('진행중');
-  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({});
-  const [currentTripIndex, setCurrentTripIndex] = useState(0);
+const coursePhotos = [
+  { local: require('../../assets/icons/대불호텔.jpg'), locked: false },
+  { local: null, locked: true },
+  { local: null, locked: true },
+  { local: null, locked: true },
+];
 
-  // 임시 여행 데이터 (인천 여행)
-  const trips: Trip[] = [
-    {
-      id: 1,
-      title: '인천 탐방',
-      status: 'current',
-      progress: 60,
-      locations: [
-        { id: 1, name: '대불 호텔', lat: 37.5796, lng: 126.9770, visited: true },
-        { id: 2, name: '인천 대공원', lat: 37.5794, lng: 126.9910, visited: true },
-        { id: 3, name: '인천의 중심', lat: 37.5789, lng: 126.9949, visited: false, locked: true },
-        { id: 4, name: '인천의 역사적인 공간', lat: 37.5658, lng: 126.9751, visited: false, locked: true },
-      ]
-    },
-    {
-      id: 2,
-      title: '부산 해안 여행',
-      status: 'planned',
-      progress: 0,
-      locations: [
-        { id: 5, name: '해운대', lat: 35.1586, lng: 129.1603, visited: false },
-        { id: 6, name: '광안대교', lat: 35.1534, lng: 129.1267, visited: false },
-      ]
-    },
-    {
-      id: 3,
-      title: '제주도 일주',
-      status: 'completed',
-      progress: 100,
-      locations: [
-        { id: 7, name: '성산일출봉', lat: 33.4581, lng: 126.9425, visited: true },
-        { id: 8, name: '만장굴', lat: 33.5283, lng: 126.7650, visited: true },
-        { id: 9, name: '천지연폭포', lat: 33.2468, lng: 126.5580, visited: true },
-      ]
-    }
-  ];
-
-  const currentTrip = trips[currentTripIndex];
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  const handlePreviousLocation = () => {
-    if (currentTripIndex > 0) {
-      setCurrentTripIndex(currentTripIndex - 1);
-    }
-  };
-
-  const handleNextLocation = () => {
-    if (currentTripIndex < trips.length - 1) {
-      setCurrentTripIndex(currentTripIndex + 1);
-    }
-  };
-
-  const handleRecordProgress = () => {
-    Alert.alert('🎮 진행 기록', '여행 진행 상황을 기록하시겠습니까?');
-  };
-
-  const handleDetailView = () => {
-    Alert.alert('🗺️ 상세 보기', '지도에서 상세한 경로를 확인합니다.');
-  };
-
-  const handleChatBot = () => {
-    Alert.alert('🤖 여행 가이드', 'AI 여행 가이드와 대화를 시작합니다.');
-  };
-
-  const handleQuitCourse = () => {
-    Alert.alert('❌ 코스 그만두기', '정말로 현재 코스를 그만두시겠습니까?');
-  };
-
-  const filteredTrips = trips.filter(trip => {
-    if (activeTab === '진행중') return trip.status === 'current';
-    if (activeTab === '진행완료') return trip.status === 'completed';
-    if (activeTab === '찜해놓은') return trip.status === 'planned';
-    return false;
-  });
+const TripsScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const [activeTab, setActiveTab] = useState('progress');
 
   return (
-    <View style={styles.container}>
-      {/* 폰트 테스트 섹션 */}
-      <View style={{padding: 16, backgroundColor: '#fff', borderBottomWidth: 2, borderColor: '#000'}}>
-        <Text style={{fontFamily: 'Neo둥근모 Pro', fontSize: 20, color: 'red'}}>일반 Text - Neo둥근모 Pro</Text>
-        <PixelTextComponent style={{fontSize: 20, color: 'blue'}}>PixelText 컴포넌트</PixelTextComponent>
-        <Text style={{fontSize: 20, color: 'green'}}>일반 Text - 시스템 폰트</Text>
-      </View>
-      
-      {/* Top Navigation Bar */}
-      <View style={styles.topNav}>
-        <View style={styles.tabContainer}>
-          {(['진행중', '진행완료', '찜해놓은'] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tab,
-                activeTab === tab && styles.activeTab
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[
-                styles.tabText,
-                activeTab === tab && styles.activeTabText
-              ]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Content Area */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Current Progress Route Title */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>현재 진행중인 코스</Text>
-        </View>
-
-        {/* Map Section */}
-        <View style={styles.mapCard}>
-          <ImageBackground
-            source={{ uri: 'https://readdy.ai/api/search-image?query=8-bit%20pixel%20art%20style%20retro%20video%20game%20map%20with%20terrain%20features%2C%20mountains%2C%20forests%2C%20roads%2C%20pixelated%20landscape%2C%20top-down%20view%2C%20classic%20arcade%20game%20aesthetic%2C%20colorful%20pixel%20graphics%2C%20game%20world%20map%2C%20isolated%20on%20light%20background%2C%20centered%20composition&width=400&height=256&seq=map001&orientation=landscape' }}
-            style={styles.mapBackground}
-            resizeMode="cover"
-          >
-            {/* Pixelated Location Markers */}
-            {currentTrip?.locations.map((location, index) => (
-              <View
-                key={location.id}
-                style={[
-                  styles.marker,
-                  {
-                    top: 20 + (index * 40),
-                    left: 30 + (index * 60),
-                  }
-                ]}
-              >
-                <View style={styles.markerInner}>
-                  <Text style={styles.markerText}>📍</Text>
-                </View>
-              </View>
-            ))}
-            
-            {/* Route Path */}
-            <View style={styles.routePath}>
-              {currentTrip?.locations.slice(0, -1).map((_, index) => (
-                <View
-                  key={index}
+    <>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'left', 'right']}>
+        <View style={styles.container}>
+          {/* 상단 탭 네비게이션 (세그먼트 컨트롤 스타일) */}
+          <View style={styles.tabBarWrap}>
+            {TABS.map((tab, idx) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
                   style={[
-                    styles.pathSegment,
-                    {
-                      top: 32 + (index * 40),
-                      left: 42 + (index * 60),
-                      width: 60,
-                      height: 4,
-                    }
+                    styles.tabBtn,
+                    isActive && styles.tabBtnActive,
+                    idx === 0 && styles.tabBtnFirst,
+                    idx === TABS.length - 1 && styles.tabBtnLast,
                   ]}
-                />
+                  onPress={() => setActiveTab(tab.key)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.tabBtnText,
+                    isActive ? styles.tabBtnTextActive : styles.tabBtnTextInactive,
+                    { fontFamily: 'NeoDunggeunmoPro-Regular' }
+                  ]}>{tab.label}</Text>
+                  {isActive && <View style={styles.tabUnderline} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <ScrollView style={styles.content} contentContainerStyle={{paddingBottom: 32}} showsVerticalScrollIndicator={false}>
+            {/* 제목 */}
+            <Text style={[styles.progressTitle, { fontFamily: 'NeoDunggeunmoPro-Regular' }]}>현재 진행중인 코스</Text>
+
+            {/* 지도 영역 (이미지로 대체) */}
+            <View style={styles.mapBox}>
+              <Image source={require('../../assets/icons/Map_mockup.png')} style={styles.mapImg} resizeMode="cover" />
+            </View>
+
+
+            {/* 대불 호텔 카드 */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={styles.pixelStepNum}>①</Text>
+              <TouchableOpacity style={styles.hotelCard} activeOpacity={0.8}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.hotelCardText}>대불 호텔</Text>
+                </View>
+                <Text style={styles.hotelCardArrow}>{'>'}</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* 인천대공원 코스 카드 */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={styles.pixelStepNumActive}>②</Text>
+              <View style={styles.hotelCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.hotelCardText}>인천대공원</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.prevNextBtn, { marginLeft: 12, flex: undefined, paddingVertical: 8, paddingHorizontal: 16 }]}
+                  onPress={() => (navigation as any).navigate('Map', { startLocation: '현위치', endLocation: '인천대공원' })}
+                >
+                  <Text style={styles.prevNextBtnText}>다음 목적지</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* 잠금 카드들 */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={styles.pixelStepNum}>③</Text>
+              <View style={styles.lockedCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.lockedCardText}>인천의 중심</Text>
+                </View>
+                <PixelLockIcon />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={styles.pixelStepNum}>④</Text>
+              <View style={styles.lockedCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.lockedCardText}>인천의 역사적인 공간</Text>
+                </View>
+                <PixelLockIcon />
+              </View>
+            </View>
+
+            {/* 사진 섹션 */}
+            <Text style={[styles.photoSectionTitle, { fontFamily: 'NeoDunggeunmoPro-Regular' }]}>지금까지 진행한 코스 사진</Text>
+            <View style={styles.photoGrid}>
+              {coursePhotos.map((photo, idx) => (
+                <View key={idx} style={styles.photoSlot}>
+                  {photo.locked ? (
+                    <PixelLockIcon />
+                  ) : (
+                    <Image source={photo.local} style={styles.photo} resizeMode="cover" />
+                  )}
+                </View>
               ))}
             </View>
-          </ImageBackground>
-        </View>
 
-        {/* Location Navigation Buttons */}
-        <View style={styles.locationButtons}>
-          <TouchableOpacity 
-            style={styles.locationButton}
-            onPress={handlePreviousLocation}
-          >
-            <Text style={styles.locationButtonText}>대불 호텔</Text>
-            <Text style={styles.locationButtonArrow}>▶️</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.locationButton}
-          >
-            <Text style={styles.locationButtonText}>인천 대공원</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.locationButton}
-            onPress={handleNextLocation}
-          >
-            <Text style={styles.locationButtonText}>다음 목적지</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Locked Locations */}
-        <View style={styles.lockedLocations}>
-          <View style={styles.lockedLocation}>
-            <Text style={styles.lockedLocationText}>인천의 중심</Text>
-            <Text style={styles.lockIcon}>🔒</Text>
-          </View>
-          <View style={styles.lockedLocation}>
-            <Text style={styles.lockedLocationText}>인천의 역사적인 공간</Text>
-            <Text style={styles.lockIcon}>🔒</Text>
-          </View>
-        </View>
-
-        {/* Course Photos Section */}
-        <View style={styles.photosSection}>
-          <Text style={styles.photosTitle}>지금까지 진행한 코스 사진</Text>
-          <View style={styles.photoGrid}>
-            <View style={styles.photoSlot}>
-              <Image 
-                source={{ uri: 'https://via.placeholder.com/80x80/4A90E2/FFFFFF?text=사진' }}
-                style={styles.photo}
-              />
+            {/* 하단 버튼 */}
+            <View style={styles.bottomRow}>
+              <TouchableOpacity style={styles.quitBtn} activeOpacity={0.8}>
+                <Text style={styles.quitBtnText}>코스 그만두기</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.photoSlot}>
-              <Text style={styles.lockIcon}>🔒</Text>
-            </View>
-            <View style={styles.photoSlot}>
-              <Text style={styles.lockIcon}>🔒</Text>
-            </View>
-            <View style={styles.photoSlot}>
-              <Text style={styles.lockIcon}>🔒</Text>
-            </View>
-          </View>
+          </ScrollView>
         </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.quitButton}
-            onPress={handleQuitCourse}
-          >
-            <Text style={styles.quitButtonText}>코스 그만두기</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.chatBotButton}
-            onPress={handleChatBot}
-          >
-            <Text style={styles.chatBotButtonText}>ChatBot</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
+      </SafeAreaView>
+    </>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
-  },
-  topNav: {
     backgroundColor: '#fff',
-    borderBottomWidth: 4,
-    borderBottomColor: '#000',
-    paddingTop: 50, // Safe area
-  },
-  tabContainer: {
-    flexDirection: 'row',
     padding: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderWidth: 2,
-    borderColor: '#000',
-    marginHorizontal: 2,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  activeTab: {
-    backgroundColor: '#ef4444',
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#000',
-  },
-  activeTabText: {
-    color: '#fff',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 100, // Bottom nav space
+    paddingHorizontal: 8,
   },
-  titleContainer: {
-    marginBottom: 16,
+  tabBarWrap: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    padding: 4,
+    margin: 3,
   },
-  title: {
-    fontSize: 24,
-    color: '#22c55e',
-    letterSpacing: 1,
-    borderWidth: 2,
-    borderColor: '#22c55e',
-    backgroundColor: '#fff',
-    padding: 8,
+  tabBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    marginHorizontal: 2,
+    position: 'relative',
+  },
+  tabBtnActive: {},
+  tabBtnFirst: {
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  tabBtnLast: {
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  tabBtnText: {
+    marginBottom: 3,
+    fontSize: 16,
     textAlign: 'center',
   },
-  mapCard: {
-    backgroundColor: '#fff',
-    borderWidth: 4,
-    borderColor: '#000',
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 16,
+  tabBtnTextActive: {
+    color: INCHEON_BLUE,
   },
-  mapBackground: {
-    height: 256,
-    width: '100%',
+  tabBtnTextInactive: {
+    color: INCHEON_GRAY,
   },
-  marker: {
+  tabUnderline: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    backgroundColor: '#ef4444',
+    left: 8,
+    right: 8,
+    bottom: 4,
+    height: 4,
+    backgroundColor: INCHEON_BLUE,
+    borderRadius: 2,
+  },
+  progressTitle: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
+    fontSize: 30,
+    color: INCHEON_BLUE,
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+  mapBox: {
     borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerInner: {
-    width: 16,
-    height: 16,
+    borderColor: '#222',
     backgroundColor: '#fff',
-    borderRadius: 8,
+    marginBottom: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 18,
+    overflow: 'hidden',
   },
-  markerText: {
-    fontSize: 8,
+  mapImg: {
+    width: width - 40,
+    height: 180,
+    borderRadius: 0,
   },
-  routePath: {
-    position: 'absolute',
-  },
-  pathSegment: {
-    position: 'absolute',
-    backgroundColor: '#ef4444',
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  locationButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  locationButton: {
+  hotelCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 4,
-    borderColor: '#000',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  locationButtonText: {
-    fontSize: 14,
-    color: '#000',
-  },
-  locationButtonArrow: {
-    fontSize: 10,
-  },
-  lockedLocations: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  lockedLocation: {
-    backgroundColor: '#fff',
-    borderWidth: 4,
-    borderColor: '#000',
-    padding: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 2,
+    borderColor: '#222',
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 10,
+    borderRadius: 10,
   },
-  lockedLocationText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  lockIcon: {
+  hotelCardText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 16,
+    color: INCHEON_GRAY,
   },
-  photosSection: {
-    marginBottom: 16,
-  },
-  photosTitle: {
+  hotelCardArrow: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 18,
-    color: '#000',
-    marginBottom: 12,
+    color: INCHEON_GRAY,
+  },
+  prevNextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    gap: 8,
+  },
+  prevNextBtn: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: INCHEON_BLUE,
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginLeft: 8,
+    borderRadius: 10,
+  },
+  prevNextBtnText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
+    fontSize: 15,
+    color: INCHEON_GRAY,
+  },
+  lockedCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 2,
+    borderColor: '#222',
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 10,
+    borderRadius: 10,
+  },
+  lockedCardText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
+    fontSize: 16,
+    color: INCHEON_GRAY,
+  },
+  lockIconPixel: {
+    textShadowColor: '#fff',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 0,
+  },
+  photoSectionTitle: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
+    fontSize: 28,
+    color: INCHEON_BLUE,
+    textAlign: 'center',
+    marginVertical: 16,
   },
   photoGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 24,
     gap: 8,
   },
   photoSlot: {
-    flex: 1,
-    height: 80,
+    width: (width - 48) / 2,
+    height: 90,
     backgroundColor: '#fff',
-    borderWidth: 4,
-    borderColor: '#000',
+    borderWidth: 2,
+    borderColor: INCHEON_GRAY,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
   },
   photo: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    borderRadius: 10,
   },
-  actionButtons: {
+  bottomRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+    position: 'relative',
   },
-  quitButton: {
+  quitBtn: {
     flex: 1,
-    backgroundColor: '#ec4899',
-    borderWidth: 4,
-    borderColor: '#000',
+    backgroundColor: INCHEON_BLUE_LIGHT,
+    borderWidth: 2,
+    borderColor: '#222',
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
   },
-  quitButtonText: {
+  quitBtnText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 16,
+    color: INCHEON_GRAY,
+  },
+  pixelLockIcon: {
+    width: 28,
+    height: 28,
+    marginLeft: 4,
+    marginRight: 4,
+  },
+  pixelStepNum: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
+    fontSize: 38,
+    color: INCHEON_BLUE,
+    marginRight: 5,
+    minWidth: 36,
+    textAlign: 'center',
+  },
+  pixelStepNumActive: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
+    fontSize: 37,
     color: '#fff',
+    backgroundColor: INCHEON_BLUE,
+    borderRadius: 999,
+    width: 40,
+    height: 40,
+    textAlign: 'center',
+    lineHeight: 40,
+    borderWidth: 3,
+    borderColor: '#fff',
+    overflow: 'hidden',
+    marginRight: 5,
+    minWidth: 40,
   },
-  chatBotButton: {
-    flex: 1,
-    backgroundColor: '#22c55e',
-    borderWidth: 4,
-    borderColor: '#000',
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  chatBotButtonText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-}); 
+});
+
+export default TripsScreen; 

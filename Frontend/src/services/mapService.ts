@@ -221,52 +221,87 @@ export const generateMapHtml = (
     </head>
     <body>
       <div id="map"></div>
-      <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_API_KEY}&libraries=services"></script>
       <script>
-        var mapContainer = document.getElementById('map');
-        var mapOption = {
-          center: new kakao.maps.LatLng(37.5665, 126.9780),
-          level: 8
-        };
-        var map = new kakao.maps.Map(mapContainer, mapOption);
-        
-        // 여행 코스 마커들 추가
-        var locations = ${JSON.stringify(locations)};
-        var markers = [];
-        
-        locations.forEach(function(location, index) {
-          var marker = new kakao.maps.Marker({
-            position: new kakao.maps.LatLng(location.lat, location.lng),
-            map: map
-          });
-          
-          var infowindow = new kakao.maps.InfoWindow({
-            content: '<div style="padding:5px;font-size:12px;">' + location.name + '</div>'
-          });
-          
-          kakao.maps.event.addListener(marker, 'click', function() {
-            infowindow.open(map, marker);
-          });
-          
-          markers.push(marker);
-        });
-        
-        ${routeScript}
-        
-        // 지도 클릭 이벤트
-        kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
-          var latlng = mouseEvent.latLng;
-          console.log('클릭한 위치:', latlng.getLat(), latlng.getLng());
-        });
-        
-        // 마커가 있는 경우 지도 범위 조정
-        if (markers.length > 0) {
-          var bounds = new kakao.maps.LatLngBounds();
-          markers.forEach(function(marker) {
-            bounds.extend(marker.getPosition());
-          });
-          map.setBounds(bounds);
+        // 진단: 환경 정보 출력
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(
+            '진단: appkey=${KAKAO_MAP_API_KEY}, userAgent=' + navigator.userAgent
+          );
         }
+        // 진단: fetch로 SDK 직접 접근
+        fetch('https://dapi.kakao.com/v2/maps/sdk.js')
+          .then(function(res) {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage('fetch status: ' + res.status);
+            }
+          })
+          .catch(function(err) {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage('fetch error: ' + err);
+            }
+          });
+
+        // JS 오류를 React Native로 전달
+        window.onerror = function(message, source, lineno, colno, error) {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(
+              'JS ERROR: ' + message + ' at ' + source + ':' + lineno + ':' + colno
+            );
+          }
+        };
+        // 카카오맵 SDK 동적 로드
+        function loadKakaoMap() {
+          var script = document.createElement('script');
+          script.onload = function() {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage('Kakao map loaded');
+            }
+            // 지도 생성 코드 (kakao 객체 사용)
+            var mapContainer = document.getElementById('map');
+            var mapOption = {
+              center: new kakao.maps.LatLng(37.5665, 126.9780),
+              level: 8
+            };
+            var map = new kakao.maps.Map(mapContainer, mapOption);
+            var locations = ${JSON.stringify(locations)};
+            var markers = [];
+            locations.forEach(function(location, index) {
+              var marker = new kakao.maps.Marker({
+                position: new kakao.maps.LatLng(location.lat, location.lng),
+                map: map
+              });
+              var infowindow = new kakao.maps.InfoWindow({
+                content: '<div style="padding:5px;font-size:12px;">' + location.name + '</div>'
+              });
+              kakao.maps.event.addListener(marker, 'click', function() {
+                infowindow.open(map, marker);
+              });
+              markers.push(marker);
+            });
+            ${routeScript}
+            kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+              var latlng = mouseEvent.latLng;
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage('지도 클릭: ' + latlng.getLat() + ', ' + latlng.getLng());
+              }
+            });
+            if (markers.length > 0) {
+              var bounds = new kakao.maps.LatLngBounds();
+              markers.forEach(function(marker) {
+                bounds.extend(marker.getPosition());
+              });
+              map.setBounds(bounds);
+            }
+          };
+          script.onerror = function() {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage('카카오맵 SDK 로드 실패!');
+            }
+          };
+          script.src = "https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_API_KEY}&libraries=services";
+          document.head.appendChild(script);
+        }
+        loadKakaoMap();
       </script>
     </body>
     </html>

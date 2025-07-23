@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { PixelText as Text } from '../../components/PixelText';
+import { Text } from 'react-native';
 import LoginScreen from '../Auth/LoginScreen';
 import SignupScreen from '../Auth/SignupScreen';
 import ProfileSetupScreen from '../Auth/ProfileSetupScreen';

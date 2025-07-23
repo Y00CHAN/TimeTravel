@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, Modal, TextInput, ScrollView } from 'react-native';
+import { Text, View, StyleSheet, TouchableOpacity, Alert, Modal, TextInput, ScrollView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { generateMapHtml, addressToCoordinates, searchRoute } from '../../services/mapService';
 import { validateApiKeys } from '../../config/apiKeys';
-import { PixelText as Text } from '../../components/PixelText';
 
 interface Location {
   id: number;
@@ -22,7 +21,7 @@ interface Trip {
   isActive: boolean;
 }
 
-export default function MapScreen() {
+export default function MapScreen({ route }: any) {
   const [showMap, setShowMap] = useState(false);
   const [showRouteModal, setShowRouteModal] = useState(false);
   const [startLocation, setStartLocation] = useState('');
@@ -84,12 +83,23 @@ export default function MapScreen() {
   useEffect(() => {
     if (apiKeysValid && currentTrip) {
       const locations = currentTrip.locations || [];
-      console.log('지도 HTML 생성 중...', { locationsCount: locations.length });
       const html = generateMapHtml(locations);
       setMapHtml(html);
-      console.log('지도 HTML 생성 완료');
+      console.log('mapHtml:', html); // mapHtml 내용 콘솔 출력
     }
   }, [currentTrip, apiKeysValid]);
+
+  // navigation param으로 길찾기 자동 세팅
+  useEffect(() => {
+    if (route && route.params) {
+      const { startLocation, endLocation } = route.params;
+      if (startLocation || endLocation) {
+        if (startLocation) setStartLocation(startLocation);
+        if (endLocation) setEndLocation(endLocation);
+        setShowRouteModal(true);
+      }
+    }
+  }, [route]);
 
   const handleShowMap = () => {
     if (!apiKeysValid) {
@@ -177,15 +187,20 @@ export default function MapScreen() {
         <View style={styles.mapContainer}>
           <WebView
             source={{ html: mapHtml }}
-            style={styles.webview}
+            style={{ flex: 1, width: '100%', height: '100%' }}
             javaScriptEnabled={true}
             domStorageEnabled={true}
+            originWhitelist={['*']}
+            allowFileAccess={true}
+            allowUniversalAccessFromFileURLs={true}
             onMessage={(event) => {
               console.log('WebView 메시지:', event.nativeEvent.data);
+              Alert.alert('WebView 메시지', event.nativeEvent.data);
             }}
             onError={(syntheticEvent) => {
               const { nativeEvent } = syntheticEvent;
               console.error('WebView 오류:', nativeEvent);
+              Alert.alert('WebView 오류', JSON.stringify(nativeEvent));
             }}
             onLoadEnd={() => {
               console.log('WebView 로드 완료');
@@ -272,6 +287,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   text: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 24,
     color: '#bbb',
     marginTop: 8,
@@ -301,9 +317,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   buttonText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
   },
   tripInfo: {
     backgroundColor: '#f8f9fa',
@@ -312,12 +328,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tripTitle: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 5,
   },
   tripSubtitle: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 14,
     color: '#666',
   },
@@ -363,8 +380,8 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalTitle: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 20,
-    fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
     color: '#333',
@@ -373,8 +390,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   inputLabel: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
     marginBottom: 5,
   },
@@ -406,13 +423,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
   },
   cancelButtonText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     color: '#666',
     fontSize: 16,
-    fontWeight: '600',
   },
   searchButtonText: {
+    fontFamily: 'NeoDunggeunmoPro-Regular',
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
   },
 }); 
