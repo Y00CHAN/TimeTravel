@@ -1,435 +1,336 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, StyleSheet, TouchableOpacity, Alert, Modal, TextInput, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Dimensions,
+  Platform,
+} from 'react-native';
 import { WebView } from 'react-native-webview';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import { generateMapHtml, addressToCoordinates, searchRoute } from '../../services/mapService';
-import { validateApiKeys } from '../../config/apiKeys';
+import { generateMapHtml, getCurrentLocation, requestLocationPermission } from '../../services/mapService';
+import { INCHEON_BLUE, INCHEON_GRAY } from '../../styles/fonts';
+import MissionNotification from '../../components/MissionNotification';
+import HistoricalPhotoSelector from '../../components/HistoricalPhotoSelector';
+import { Mission } from '../../types/mission';
+import { findMissionByLocation, missions } from '../../data/missions';
 
-interface Location {
-  id: number;
-  name: string;
-  address: string;
-  lat: number;
-  lng: number;
-  order: number;
-}
+const { width, height } = Dimensions.get('window');
 
-interface Trip {
-  id: number;
-  title: string;
-  locations: Location[];
-  isActive: boolean;
-}
-
-export default function MapScreen({ route }: any) {
-  const [showMap, setShowMap] = useState(false);
+const MapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapHtml, setMapHtml] = useState<string>('');
   const [showRouteModal, setShowRouteModal] = useState(false);
-  const [startLocation, setStartLocation] = useState('');
-  const [endLocation, setEndLocation] = useState('');
-  const [currentTrip, setCurrentTrip] = useState<Trip | null>(null);
-  const [mapHtml, setMapHtml] = useState('');
-  const [apiKeysValid, setApiKeysValid] = useState(false);
+  const [routeData, setRouteData] = useState<any>(null);
+  const [showMissionNotification, setShowMissionNotification] = useState(false);
+  const [currentMission, setCurrentMission] = useState<Mission | null>(null);
+  const [showPhotoSelector, setShowPhotoSelector] = useState(false);
+  const [locationCheckInterval, setLocationCheckInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // API 키 유효성 검사
+  // 미션 위치 데이터를 지도용 형식으로 변환
+  const missionLocations = missions.map(mission => ({
+    id: mission.location.id,
+    name: mission.location.name,
+    lat: mission.location.lat,
+    lng: mission.location.lng,
+    order: mission.location.order,
+  }));
+
   useEffect(() => {
-    const checkApiKeys = () => {
-      const isValid = validateApiKeys();
-      setApiKeysValid(isValid);
-      if (!isValid) {
-        console.warn('카카오맵 API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.');
+    initializeMap();
+    startLocationMonitoring();
+    return () => {
+      if (locationCheckInterval) {
+        clearInterval(locationCheckInterval);
       }
     };
-    checkApiKeys();
   }, []);
 
-  // 임시 데이터 - 실제로는 API에서 가져올 예정
-  useEffect(() => {
-    // 임시 여행 데이터
-    const mockTrip: Trip = {
-      id: 1,
-      title: '서울 여행',
-      isActive: true,
-      locations: [
+  const initializeMap = () => {
+    const html = generateMapHtml(missionLocations, showRouteModal, routeData, currentLocation || undefined);
+    setMapHtml(html);
+  };
+
+  const startLocationMonitoring = () => {
+    // 10초마다 위치를 확인하여 미션 감지
+    const interval = setInterval(async () => {
+      if (currentLocation) {
+        checkForMissions(currentLocation.lat, currentLocation.lng);
+      }
+    }, 10000); // 10초마다 체크
+
+    setLocationCheckInterval(interval);
+  };
+
+  const checkForMissions = (lat: number, lng: number) => {
+    const nearbyMission = findMissionByLocation(lat, lng);
+    
+    if (nearbyMission && !showMissionNotification && !showPhotoSelector) {
+      console.log('미션 감지:', nearbyMission.location.name);
+      setCurrentMission(nearbyMission);
+      setShowMissionNotification(true);
+    }
+  };
+
+  const handleGetCurrentLocation = async () => {
+    try {
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        Alert.alert('위치 권한 필요', '현재 위치를 가져오기 위해 위치 권한이 필요합니다.');
+        return;
+      }
+
+      const location = await getCurrentLocation();
+      setCurrentLocation(location);
+      
+      // 위치 업데이트 후 미션 체크
+      checkForMissions(location.lat, location.lng);
+      
+      // 지도 HTML 업데이트
+      const html = generateMapHtml(missionLocations, showRouteModal, routeData, location);
+      setMapHtml(html);
+      
+      console.log('현재 위치 업데이트:', location);
+    } catch (error) {
+      console.error('현재 위치 가져오기 오류:', error);
+      Alert.alert('오류', '현재 위치를 가져올 수 없습니다.');
+    }
+  };
+
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      console.log('WebView 메시지 수신:', data);
+      
+      if (data.type === 'requestCurrentLocation') {
+        handleGetCurrentLocation();
+      } else if (data.type === 'mapReady') {
+        console.log('지도가 준비되었습니다.');
+      } else if (data.type === 'error') {
+        console.error('WebView 오류:', data.message);
+        Alert.alert('지도 오류', data.message);
+      }
+    } catch (error) {
+      console.error('WebView 메시지 파싱 오류:', error);
+    }
+  };
+
+  const handleStartMission = (mission: Mission) => {
+    setShowMissionNotification(false);
+    setCurrentMission(mission);
+    setShowPhotoSelector(true);
+  };
+
+  const handlePhotoSelected = (mission: Mission, photoId: number) => {
+    setShowPhotoSelector(false);
+    
+    // 미션 완료 처리
+    mission.completed = true;
+    mission.selectedPhotoId = photoId;
+    
+    Alert.alert(
+      '미션 완료! 🎉',
+      `${mission.location.name}의 과거 사진을 성공적으로 선택했습니다!`,
+      [
         {
-          id: 1,
-          name: '경복궁',
-          address: '서울특별시 종로구 사직로 161',
-          lat: 37.5796,
-          lng: 126.9770,
-          order: 1
-        },
-        {
-          id: 2,
-          name: '창덕궁',
-          address: '서울특별시 종로구 율곡로 99',
-          lat: 37.5794,
-          lng: 126.9910,
-          order: 2
-        },
-        {
-          id: 3,
-          name: '남산타워',
-          address: '서울특별시 용산구 남산공원길 105',
-          lat: 37.5512,
-          lng: 126.9882,
-          order: 3
+          text: '확인',
+          onPress: () => {
+            // 갤러리에 사진 추가 등의 처리
+            console.log('미션 완료:', mission.id, '선택된 사진:', photoId);
+          }
         }
       ]
-    };
-    setCurrentTrip(mockTrip);
-  }, []);
+    );
+  };
 
-  // 카카오맵 HTML 생성
-  useEffect(() => {
-    if (apiKeysValid && currentTrip) {
-      const locations = currentTrip.locations || [];
-      const html = generateMapHtml(locations);
-      setMapHtml(html);
-      console.log('mapHtml:', html); // mapHtml 내용 콘솔 출력
-    }
-  }, [currentTrip, apiKeysValid]);
-
-  // navigation param으로 길찾기 자동 세팅
-  useEffect(() => {
-    if (route && route.params) {
-      const { startLocation, endLocation } = route.params;
-      if (startLocation || endLocation) {
-        if (startLocation) setStartLocation(startLocation);
-        if (endLocation) setEndLocation(endLocation);
-        setShowRouteModal(true);
-      }
-    }
-  }, [route]);
-
-  const handleShowMap = () => {
-    if (!apiKeysValid) {
-      Alert.alert(
-        'API 키 오류',
-        '카카오맵 API 키가 설정되지 않았습니다.\n\n.env 파일에서 다음 키들을 설정해주세요:\n- KAKAO_MAP_API_KEY\n- KAKAO_REST_API_KEY',
-        [
-          { text: '확인', style: 'default' }
-        ]
-      );
+  const handleRouteSearch = () => {
+    if (!currentLocation) {
+      Alert.alert('오류', '현재 위치를 먼저 가져와주세요.');
       return;
     }
-    
-    console.log('지도 보기 버튼 클릭됨');
-    setShowMap(true);
+    setShowRouteModal(true);
   };
 
-  const handleCloseMap = () => {
-    setShowMap(false);
-  };
-
-  const handleRouteSearch = async () => {
-    if (!startLocation.trim() || !endLocation.trim()) {
-      Alert.alert('알림', '출발지와 도착지를 모두 입력해주세요.');
-      return;
-    }
-
-    try {
-      // 출발지와 도착지 좌표 변환
-      const startCoords = await addressToCoordinates(startLocation);
-      const endCoords = await addressToCoordinates(endLocation);
-
-      // 길찾기 실행
-      const routeData = await searchRoute(startCoords, endCoords);
-      
-      // 경로가 포함된 지도 HTML 생성
-      const locations = currentTrip?.locations || [];
-      const html = generateMapHtml(locations, true, routeData);
-      setMapHtml(html);
-      
-      setShowRouteModal(false);
-      setShowMap(true);
-      
-      Alert.alert('성공', '길찾기가 완료되었습니다!');
-    } catch (error) {
-      console.error('길찾기 오류:', error);
-      Alert.alert('오류', '길찾기를 실패했습니다. 주소를 다시 확인해주세요.');
+  // 개발용: 미션 테스트 함수들
+  const testMission1 = () => {
+    const mission = missions.find(m => m.id === 1);
+    if (mission) {
+      setCurrentMission(mission);
+      setShowMissionNotification(true);
     }
   };
 
-  const handleCurrentLocation = () => {
-    // 현재 위치로 이동하는 기능
-    Alert.alert('알림', '현재 위치로 이동합니다.');
+  const testMission2 = () => {
+    const mission = missions.find(m => m.id === 2);
+    if (mission) {
+      setCurrentMission(mission);
+      setShowMissionNotification(true);
+    }
+  };
+
+  const testMission3 = () => {
+    const mission = missions.find(m => m.id === 3);
+    if (mission) {
+      setCurrentMission(mission);
+      setShowMissionNotification(true);
+    }
+  };
+
+  const testMission4 = () => {
+    const mission = missions.find(m => m.id === 4);
+    if (mission) {
+      setCurrentMission(mission);
+      setShowMissionNotification(true);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {!showMap ? (
-        <View style={styles.initialView}>
-          <Ionicons name="location-outline" size={48} color="#bbb" />
-          <Text style={styles.text}>지도</Text>
-          
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.mapButton} onPress={handleShowMap}>
-              <Ionicons name="map-outline" size={24} color="#fff" />
-              <Text style={styles.buttonText}>지도 보기</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.routeButton} onPress={() => setShowRouteModal(true)}>
-              <Ionicons name="navigate-outline" size={24} color="#fff" />
-              <Text style={styles.buttonText}>길찾기</Text>
-            </TouchableOpacity>
-          </View>
-
-          {currentTrip && currentTrip.isActive && (
-            <View style={styles.tripInfo}>
-              <Text style={styles.tripTitle}>진행중인 여행: {currentTrip.title}</Text>
-              <Text style={styles.tripSubtitle}>
-                {currentTrip.locations.length}개의 장소가 등록되어 있습니다
-              </Text>
-            </View>
-          )}
+      <View style={styles.header}>
+        <Text style={styles.title}>지도</Text>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.button} onPress={handleGetCurrentLocation}>
+            <Text style={styles.buttonText}>현재 위치</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={handleRouteSearch}>
+            <Text style={styles.buttonText}>길찾기</Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        <View style={styles.mapContainer}>
-          <WebView
-            source={{ html: mapHtml }}
-            style={{ flex: 1, width: '100%', height: '100%' }}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            originWhitelist={['*']}
-            allowFileAccess={true}
-            allowUniversalAccessFromFileURLs={true}
-            onMessage={(event) => {
-              console.log('WebView 메시지:', event.nativeEvent.data);
-              Alert.alert('WebView 메시지', event.nativeEvent.data);
-            }}
-            onError={(syntheticEvent) => {
-              const { nativeEvent } = syntheticEvent;
-              console.error('WebView 오류:', nativeEvent);
-              Alert.alert('WebView 오류', JSON.stringify(nativeEvent));
-            }}
-            onLoadEnd={() => {
-              console.log('WebView 로드 완료');
-            }}
-          />
-          
-          <View style={styles.mapControls}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleCurrentLocation}>
-              <Ionicons name="locate" size={24} color="#333" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.controlButton} onPress={() => setShowRouteModal(true)}>
-              <Ionicons name="navigate" size={24} color="#333" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.controlButton} onPress={handleCloseMap}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      </View>
 
-      {/* 길찾기 모달 */}
-      <Modal
-        visible={showRouteModal}
-        animationType="slide"
-        transparent={true}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>길찾기</Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>출발지</Text>
-              <TextInput
-                style={styles.input}
-                value={startLocation}
-                onChangeText={setStartLocation}
-                placeholder="출발지를 입력하세요"
-              />
-            </View>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>도착지</Text>
-              <TextInput
-                style={styles.input}
-                value={endLocation}
-                onChangeText={setEndLocation}
-                placeholder="도착지를 입력하세요"
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={() => setShowRouteModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.searchButton]} 
-                onPress={handleRouteSearch}
-              >
-                <Text style={styles.searchButtonText}>길찾기</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+      {/* 개발용 테스트 버튼들 */}
+      <View style={styles.testContainer}>
+        <Text style={styles.testTitle}>🧪 개발용 미션 테스트</Text>
+        <View style={styles.testButtonContainer}>
+          <TouchableOpacity style={styles.testButton} onPress={testMission1}>
+            <Text style={styles.testButtonText}>대불호텔</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.testButton} onPress={testMission2}>
+            <Text style={styles.testButtonText}>인천대공원</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.testButton} onPress={testMission3}>
+            <Text style={styles.testButtonText}>월미도</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.testButton} onPress={testMission4}>
+            <Text style={styles.testButtonText}>송도국제도시</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </View>
+
+      <View style={styles.mapContainer}>
+        <WebView
+          source={{ html: mapHtml }}
+          style={styles.map}
+          onMessage={handleWebViewMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          scalesPageToFit={false}
+          mixedContentMode="compatibility"
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView 오류:', nativeEvent);
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView HTTP 오류:', nativeEvent);
+          }}
+        />
+      </View>
+
+      {/* 미션 알림 */}
+      <MissionNotification
+        visible={showMissionNotification}
+        mission={currentMission}
+        onClose={() => setShowMissionNotification(false)}
+        onStartMission={handleStartMission}
+      />
+
+      {/* 과거 사진 선택 */}
+      <HistoricalPhotoSelector
+        visible={showPhotoSelector}
+        mission={currentMission}
+        onClose={() => setShowPhotoSelector(false)}
+        onPhotoSelected={handlePhotoSelected}
+        navigation={navigation}
+      />
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
-  initialView: {
-    flex: 1,
-    justifyContent: 'center',
+  header: {
+    backgroundColor: 'white',
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  text: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
-    fontSize: 24,
-    color: '#bbb',
-    marginTop: 8,
-    marginBottom: 40,
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: INCHEON_BLUE,
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap: 15,
-    marginBottom: 30,
+    gap: 10,
   },
-  mapButton: {
-    backgroundColor: '#007AFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  routeButton: {
-    backgroundColor: '#34C759',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+  button: {
+    backgroundColor: INCHEON_BLUE,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
   buttonText: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
-    color: '#fff',
-    fontSize: 16,
-  },
-  tripInfo: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  tripTitle: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 5,
-  },
-  tripSubtitle: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
+    color: 'white',
     fontSize: 14,
-    color: '#666',
+    fontWeight: '600',
   },
   mapContainer: {
     flex: 1,
+    position: 'relative',
   },
-  webview: {
+  map: {
     flex: 1,
   },
-  mapControls: {
-    position: 'absolute',
-    right: 20,
-    bottom: 100,
-    gap: 10,
+  testContainer: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  controlButton: {
-    backgroundColor: '#fff',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  testTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: INCHEON_BLUE,
+    marginBottom: 10,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    width: '90%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
-    fontSize: 20,
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  inputContainer: {
-    marginBottom: 15,
-  },
-  inputLabel: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 5,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-  },
-  modalButtons: {
+  testButtonContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
     gap: 10,
-    marginTop: 20,
   },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+  testButton: {
+    backgroundColor: INCHEON_BLUE,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
-  cancelButton: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#ddd',
+  testButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  searchButton: {
-    backgroundColor: '#007AFF',
-  },
-  cancelButtonText: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
-    color: '#666',
-    fontSize: 16,
-  },
-  searchButtonText: {
-    fontFamily: 'NeoDunggeunmoPro-Regular',
-    color: '#fff',
-    fontSize: 16,
-  },
-}); 
+});
+
+export default MapScreen; 

@@ -2,16 +2,29 @@ import React from 'react';
 import { View, StyleSheet, Platform, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import HomeScreen from './src/screens/Main/HomeScreen';
 import MapScreen from './src/screens/Main/MapScreen';
 import TripsScreen from './src/screens/Main/TripsScreen';
 import GalleryScreen from './src/screens/Main/GalleryScreen';
 import ProfileScreen from './src/screens/Profile/ProfileScreen';
+import CameraScreen from './src/screens/Main/CameraScreen';
 import FloatingChatBotButton from './src/components/ui/FloatingChatBotButton';
 import { INCHEON_BLUE } from './src/styles/fonts';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+// Map 스택 네비게이터
+function MapStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MapMain" component={MapScreen} />
+      <Stack.Screen name="Camera" component={CameraScreen} />
+    </Stack.Navigator>
+  );
+}
 
 function TabBarIconWithLabel({ name, label, focused }: { name: string; label: string; focused: boolean }) {
   return (
@@ -110,7 +123,7 @@ export default function App() {
           />
           <Tab.Screen 
             name="Map" 
-            component={MapScreen} 
+            component={MapStack} 
             options={{
               tabBarLabel: ({ color, focused }) => (
                 <Text style={{ color, fontSize: 14, marginBottom: 4 }}>
