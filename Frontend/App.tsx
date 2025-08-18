@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Platform, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -11,6 +11,7 @@ import GalleryScreen from './src/screens/Main/GalleryScreen';
 import ProfileScreen from './src/screens/Profile/ProfileScreen';
 import CameraScreen from './src/screens/Main/CameraScreen';
 import FloatingChatBotButton from './src/components/ui/FloatingChatBotButton';
+import ChatScreen from './src/screens/Chat/ChatScreen';
 import { INCHEON_BLUE } from './src/styles/fonts';
 
 const Tab = createBottomTabNavigator();
@@ -54,6 +55,8 @@ function TabBarIconWithLabel({ name, label, focused }: { name: string; label: st
 }
 
 export default function App() {
+  const [chatVisible, setChatVisible] = useState(false);
+
   return (
     <>
       <NavigationContainer>
@@ -167,7 +170,8 @@ export default function App() {
           />
         </Tab.Navigator>
       </NavigationContainer>
-      <FloatingChatBotButton onPress={() => { /* 채팅창 열기 등 */ }} />
+      <FloatingChatBotButton onPress={() => setChatVisible(true)} />
+      <ChatScreen visible={chatVisible} onClose={() => setChatVisible(false)} />
     </>
   );
 } 
